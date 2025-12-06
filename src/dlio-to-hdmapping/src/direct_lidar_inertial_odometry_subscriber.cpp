@@ -18,9 +18,10 @@
 #include <pcl_ros/point_cloud.h>
 #include "laz_writer.hpp"
 
+
 struct TrajectoryPose
 {
-    double timestamp_ns;
+    uint64_t timestamp_ns;
     double x_m;
     double y_m;
     double z_m;
@@ -29,7 +30,67 @@ struct TrajectoryPose
     double qy;
     double qz;
     Eigen::Affine3d pose;
+    double om_rad;  // Roll (omega)
+    double fi_rad;  // Pitch (phi)
+    double ka_rad;  // Yaw (kappa)>
 };
+
+struct TaitBryanPose
+{
+    double px;
+    double py;
+    double pz;
+    double om;
+    double fi;
+    double ka;
+};
+
+inline double deg2rad(double deg) {
+	return (deg * M_PI) / 180.0;
+}
+
+inline double rad2deg(double rad) {
+	return (rad * 180.0) / M_PI;
+}
+
+inline TaitBryanPose pose_tait_bryan_from_affine_matrix(Eigen::Affine3d m){
+	TaitBryanPose pose;
+
+	pose.px = m(0,3);
+	pose.py = m(1,3);
+	pose.pz = m(2,3);
+
+	if (m(0,2) < 1) {
+		if (m(0,2) > -1) {
+			//case 1
+			pose.fi = asin(m(0,2));
+			pose.om = atan2(-m(1,2), m(2,2));
+			pose.ka = atan2(-m(0,1), m(0,0));
+
+			return pose;
+		}
+		else //r02 = −1
+		{
+			//case 2
+			// not a unique solution: thetaz − thetax = atan2 ( r10 , r11 )
+			pose.fi = -M_PI / 2.0;
+			pose.om = -atan2(m(1,0), m(1,1));
+			pose.ka = 0;
+			return pose;
+		}
+	}
+	else {
+		//case 3
+		// r02 = +1
+		// not a unique solution: thetaz + thetax = atan2 ( r10 , r11 )
+		pose.fi = M_PI / 2.0;
+		pose.om = atan2(m(1,0), m(1,1));
+		pose.ka = 0.0;
+		return pose;
+	}
+
+	return pose;
+}
 
 namespace fs = std::filesystem;
 std::vector<Point3Di> points_global;
@@ -141,8 +202,8 @@ int main(int argc, char **argv)
                 
                     if (cloud_msg->header.stamp.sec != 0 || cloud_msg->header.stamp.nsec != 0)
                     {
-                        uint64_t sec_in_ms = static_cast<uint64_t>(cloud_msg->header.stamp.sec) * 1000ULL;
-                        uint64_t ns_in_ms = static_cast<uint64_t>(cloud_msg->header.stamp.nsec) / 1'000'000ULL;
+                        uint64_t sec_in_ms = static_cast<uint64_t>(cloud_msg->header.stamp.sec) * 1'000'000'000ULL;
+                        uint64_t ns_in_ms = static_cast<uint64_t>(cloud_msg->header.stamp.nsec);
                         point_global.timestamp = sec_in_ms + ns_in_ms;
                     }
                 
@@ -179,9 +240,8 @@ int main(int argc, char **argv)
             double qw = odom_msg->pose.pose.orientation.w;
 
             TrajectoryPose pose;
-
-            uint64_t sec_in_ms = static_cast<uint64_t>(odom_msg->header.stamp.sec) * 1000ULL;
-            uint64_t ns_in_ms = static_cast<uint64_t>(odom_msg->header.stamp.nsec) / 1'000'000ULL;
+            uint64_t sec_in_ms = static_cast<uint64_t>(odom_msg->header.stamp.sec) * 1'000'000'000ULL;
+            uint64_t ns_in_ms = static_cast<uint64_t>(odom_msg->header.stamp.nsec);
             pose.timestamp_ns = sec_in_ms + ns_in_ms;
 
             pose.x_m = x;
@@ -200,7 +260,13 @@ int main(int argc, char **argv)
             pose.pose.translation() = trans;
             pose.pose.linear() = q.toRotationMatrix();
 
+            // Calculate Tait-Bryan angles using the original function
+            TaitBryanPose tb = pose_tait_bryan_from_affine_matrix(pose.pose);
+            pose.om_rad = tb.om;
+            pose.fi_rad = tb.fi;
+            pose.ka_rad = tb.ka;
             // Dodanie pozycji do trajektorii
+
             trajectory.push_back(pose);
 
             ROS_INFO("Added position to trajectory: x=%.3f, y=%.3f, z=%.3f", x, y, z);
@@ -245,7 +311,7 @@ int main(int argc, char **argv)
     {
         chunk.push_back(points_global[i]);
 
-        if (chunk.size() > 200000)
+        if (chunk.size() > 2000000)
         {
             counter++;
             chunks_pc.push_back(chunk);
@@ -257,7 +323,7 @@ int main(int argc, char **argv)
     // remaining pc
     std::cout << "reamaining points: " << chunk.size() << std::endl;
 
-    if (chunk.size() > 100000)
+    if (chunk.size() > 1000000)
     {
         chunks_pc.push_back(chunk);
     }
@@ -386,7 +452,8 @@ int main(int argc, char **argv)
             return 1;
         }
 
-        outfile << "timestamp_nanoseconds pose00 pose01 pose02 pose03 pose10 pose11 pose12 pose13 pose20 pose21 pose22 pose23 timestampUnix_nanoseconds" << std::endl;
+
+        outfile << "timestamp_nanoseconds pose00 pose01 pose02 pose03 pose10 pose11 pose12 pose13 pose20 pose21 pose22 pose23 timestampUnix_nanoseconds om_rad fi_rad ka_rad" << std::endl;
 
         Eigen::Vector3d trans(chunks_trajectory[i][0].x_m, chunks_trajectory[i][0].y_m, chunks_trajectory[i][0].z_m);
         Eigen::Quaterniond q(chunks_trajectory[i][0].qw, chunks_trajectory[i][0].qx, chunks_trajectory[i][0].qy, chunks_trajectory[i][0].qz);
@@ -409,9 +476,8 @@ int main(int argc, char **argv)
 
             auto pose = first_affine_inv * first_affine_curr;
             // auto pose = worker_data_concatenated[i].intermediate_trajectory[0].inverse() * worker_data_concatenated[i].intermediate_trajectory[j];
-
             outfile
-                << std::setprecision(20) << chunks_trajectory[i][j].timestamp_ns * 1e9 << " " << std::setprecision(10)
+                << chunks_trajectory[i][j].timestamp_ns << " " << std::setprecision(10)
 
                 << pose(0, 0) << " "
                 << pose(0, 1) << " "
@@ -433,7 +499,11 @@ int main(int argc, char **argv)
                 // << chunks_trajectory[i][j].qx << " "   // qx
                 // << chunks_trajectory[i][j].qy << " "   // qy
                 // << chunks_trajectory[i][j].qz << " "   // qz
-                << std::setprecision(20) << chunks_trajectory[i][j].timestamp_ns * 1e9 << " " << std::setprecision(10)
+                << chunks_trajectory[i][j].timestamp_ns << " "
+                << std::setprecision(20)
+                << chunks_trajectory[i][j].om_rad << " "
+                << chunks_trajectory[i][j].fi_rad << " "
+                << chunks_trajectory[i][j].ka_rad << " "
                 << std::endl;
         }
         outfile.close();
@@ -443,7 +513,7 @@ int main(int argc, char **argv)
     {
         m.translation() -= offset;
     }
-    
+
     fs::path path(outwd);
     path /= "lio_initial_poses.reg";
     save_poses(path.string(), m_poses, file_names);
