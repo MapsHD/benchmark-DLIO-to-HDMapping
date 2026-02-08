@@ -1,4 +1,4 @@
-# [DLIO](https://github.com/vectr-ucla/direct_lidar_odometry) converter to [HDMapping](https://github.com/MapsHD/HDMapping)
+# [DLIO](https://github.com/vectr-ucla/direct_lidar_inertial_odometry) converter to [HDMapping](https://github.com/MapsHD/HDMapping)
 
 ## Hint
 
