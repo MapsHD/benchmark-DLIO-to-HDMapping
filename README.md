@@ -1,4 +1,4 @@
-# DLIO to HDMapping simlified instruction
+# DLIO to HDMapping simplified instruction
 
 ## Step 1 (prepare data)
 Download the dataset `reg-1.bag` by clicking [link](https://cloud.cylab.be/public.php/dav/files/7PgyjbM2CBcakN5/reg-1.bag) (it is part of [Bunker DVI Dataset](https://charleshamesse.github.io/bunker-dvi-dataset)) and convert with [tool](https://github.com/MapsHD/livox_bag_aggregate) to 'reg-1.bag-pc.bag'.
@@ -28,53 +28,20 @@ cd ~/hdmapping-benchmark/data
 Expected data should appear in ~/hdmapping-benchmark/data/output_hdmapping-dlio
 Use tool [multi_view_tls_registration_step_2](https://github.com/MapsHD/HDMapping) to open session.json from ~/hdmapping-benchmark/data/output_hdmapping-dlio.
 
-You should see following data
+You should see following data in '~/hdmapping-benchmark/data/output_hdmapping-dlio'
 
 lio_initial_poses.reg
 
 poses.reg
 
-scan_lio_0.laz
-
-scan_lio_1.laz
-
-scan_lio_2.laz
-
-scan_lio_3.laz
-
-scan_lio_4.laz
-
-scan_lio_5.laz
-
-scan_lio_6.laz
-
-scan_lio_7.laz
-
-scan_lio_8.laz
-
-scan_lio_9.laz
+scan_lio_*.laz
 
 session.json
 
-trajectory_lio_0.csv
+trajectory_lio_*.csv
 
-trajectory_lio_1.csv
-
-trajectory_lio_2.csv
-
-trajectory_lio_3.csv
-
-trajectory_lio_4.csv
-
-trajectory_lio_5.csv
-
-trajectory_lio_6.csv
-
-trajectory_lio_7.csv
-
-trajectory_lio_8.csv
-
-trajectory_lio_9.csv
+## Movie
+[[movie]](https://youtu.be/xFLqFcoAtk8)
 
 ## Contact email
 januszbedkowski@gmail.com
