@@ -9,8 +9,8 @@ BAG_OUTPUT_CONTAINER='/ros_ws/recordings'
 RECORDED_BAG_NAME="recorded-dlio.bag"
 HDMAPPING_OUT_NAME="output_hdmapping"
 
-POINTCLOUD_TOPIC=/livox/pointcloud
-IMU_TOPIC=/livox/imu
+POINTCLOUD_TOPIC=/velodyne_points
+IMU_TOPIC=/imu/data
 
 usage() {
   echo "Usage:"
