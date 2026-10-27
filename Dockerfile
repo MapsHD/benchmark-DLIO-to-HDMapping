@@ -41,6 +41,18 @@ WORKDIR /ros_ws
 
 COPY ./src ./src
 
+# Canonical bag: the cloud has both `time` (float32 s, offset 20) and `t` (uint32
+# ns, offset 24). dlio::Point keeps t/time/timestamp in one union, and
+# pcl::fromROSMsg copies fields in offset order, so the union ends up holding `t`.
+# Sensor detection, though, stops at the first matching field, `time`, and picks
+# VELODYNE, which reads those ns bits as a float (~1e-37 s): deskew is silently
+# off. Pick OUSTER (`t`) whenever the cloud has `t`. Fails the build if the line
+# changes.
+RUN f=src/direct_lidar_inertial_odometry/src/dlio/odom.cc && \
+    grep -q '    } else if (field.name == "time") {' $f && \
+    sed -i 's|    } else if (field.name == "time") {|    } else if (field.name == "time" \&\& std::none_of(pc->fields.begin(), pc->fields.end(), [](const sensor_msgs::PointField\& f) { return f.name == "t"; })) {|' $f && \
+    [ "$(grep -c 'field.name == "time" && std::none_of' $f)" = 1 ]
+
 RUN source /opt/ros/noetic/setup.bash && \
     catkin_make
     

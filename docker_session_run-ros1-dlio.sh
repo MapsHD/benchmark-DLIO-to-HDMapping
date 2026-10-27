@@ -9,8 +9,8 @@ BAG_OUTPUT_CONTAINER='/ros_ws/recordings'
 RECORDED_BAG_NAME="recorded-dlio.bag"
 HDMAPPING_OUT_NAME="output_hdmapping"
 
-POINTCLOUD_TOPIC=/livox/pointcloud
-IMU_TOPIC=/livox/imu
+POINTCLOUD_TOPIC=/lidar/pointcloud
+IMU_TOPIC=/lidar/imu
 
 usage() {
   echo "Usage:"
@@ -61,6 +61,7 @@ echo "Output dir: $BAG_OUTPUT_HOST"
 xhost +local:docker >/dev/null
 
 docker run -it --rm \
+  -e DISABLE_ROS1_EOL_WARNINGS=1 \
   --network host \
   -e DISPLAY=$DISPLAY \
   -e ROS_HOME=/tmp/.ros \
@@ -77,7 +78,7 @@ docker run -it --rm \
     tmux send-keys -t '"$TMUX_SESSION"' '\''sleep 5
 source /opt/ros/noetic/setup.bash
 source /ros_ws/devel/setup.bash
-roslaunch direct_lidar_inertial_odometry dlio.launch pointcloud_topic:='"$POINTCLOUD_TOPIC"' imu_topic:='"$IMU_TOPIC"' use_sim_time:=true rviz:=true
+roslaunch dlio-to-hdmapping dlio_canonical.launch pointcloud_topic:='"$POINTCLOUD_TOPIC"' imu_topic:='"$IMU_TOPIC"' use_sim_time:=true rviz:=true
 '\'' C-m
 
     # ---------- PANEL 2: rosbag record ----------
@@ -120,6 +121,7 @@ pkill -f ros || true
   '
 
 docker run -it --rm \
+  -e DISABLE_ROS1_EOL_WARNINGS=1 \
   --network host \
   -e DISPLAY="$DISPLAY" \
   -e ROS_HOME=/tmp/.ros \

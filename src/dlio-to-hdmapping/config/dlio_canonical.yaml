@@ -1,0 +1,50 @@
+# DLIO on the benchmark's canonical bag (see the orchestration README, "Canonical bag").
+# DLIO's own cfg/dlio.yaml with only the sensor description changed: the IMU sits at the
+# lidar origin (the bag's IMU is in the lidar frame). DLIO has no per-sensor config: it
+# picks the sensor from the point fields (see the Dockerfile patch). cfg/params.yaml is
+# loaded unchanged from upstream.
+###########################################################
+#                                                         #
+# Copyright (c)                                           #
+#                                                         #
+# The Verifiable & Control-Theoretic Robotics (VECTR) Lab #
+# University of California, Los Angeles                   #
+#                                                         #
+# Authors: Kenny J. Chen, Ryan Nemiroff, Brett T. Lopez   #
+# Contact: {kennyjchen, ryguyn, btlopez}@ucla.edu         #
+#                                                         #
+###########################################################
+
+dlio:
+
+  version: 1.1.1
+
+  adaptive: true
+
+  pointcloud:
+    deskew: true
+    voxelize: true
+
+  imu:
+    calibration: true
+    intrinsics:
+      accel:
+        bias: [ 0.0, 0.0, 0.0 ]
+        sm:   [ 1.,  0.,  0.,
+                0.,  1.,  0.,
+                0.,  0.,  1. ]
+      gyro:
+        bias: [ 0.0, 0.0, 0.0 ]
+
+  extrinsics:
+    baselink2imu:
+      t: [ 0., 0., 0. ]   # the bag's IMU is in the lidar frame
+      R: [ 1.,  0.,  0.,
+           0.,  1.,  0.,
+           0.,  0.,  1. ]
+    baselink2lidar:
+      t: [ 0.,  0.,  0. ]
+      R: [ 1.,  0.,  0.,
+           0.,  1.,  0.,
+           0.,  0.,  1. ]
+
